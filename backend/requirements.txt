@@ -4,3 +4,4 @@ crewai
 crewai-tools
 python-dotenv
 langchain-openai
+firebase-admin
