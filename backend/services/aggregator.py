@@ -139,7 +139,8 @@ def _compute_metrics() -> dict:
 
     inventory_alerts = []
     for lid, snap in latest.items():
-        stock = (snap.get('quantity_on_hand')
+        stock = (snap.get('stock_on_hand')
+                 or snap.get('quantity_on_hand')
                  or snap.get('stock_level')
                  or snap.get('quantity')
                  or 0)
@@ -169,7 +170,8 @@ def _compute_metrics() -> dict:
     _window = 7
     min_days: float | None = None
     for lid, snap in latest.items():
-        stock     = (snap.get('quantity_on_hand')
+        stock     = (snap.get('stock_on_hand')
+                     or snap.get('quantity_on_hand')
                      or snap.get('stock_level')
                      or snap.get('quantity')
                      or 0)
