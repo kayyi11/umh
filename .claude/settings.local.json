@@ -6,7 +6,11 @@
       "mcp__plugin_firebase_firebase__firestore_list_databases",
       "mcp__plugin_firebase_firebase__firebase_get_environment",
       "Bash(npm install *)",
-      "Bash(node seed.js)"
+      "Bash(node seed.js)",
+      "mcp__plugin_firebase_firebase__firebase_list_apps",
+      "mcp__plugin_firebase_firebase__firebase_create_app",
+      "mcp__plugin_firebase_firebase__firebase_get_sdk_config",
+      "Bash(node test-connection.js)"
     ]
   }
 }
