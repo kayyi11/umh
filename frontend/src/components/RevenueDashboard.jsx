@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import RevenueChart from "./RevenueChart";
+import DetailedAnalysisModal from "./DetailedAnalysisModal"; // ✅ Fixed import typo
 
 export default function RevenueDashboard() {
   const [activeTab, setActiveTab] = useState("insight");
-  const [activeDimension, setActiveDimension] = useState("total"); // ✅ Track chart category
+  const [activeDimension, setActiveDimension] = useState("total"); 
   const [insightData, setInsightData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState("");
+  const [isModalLoading, setIsModalLoading] = useState(false);
 
-  // ✅ Re-fetch whenever activeDimension changes
+  // Fetch real data from Firebase via Backend
   useEffect(() => {
     const fetchInsightData = async () => {
       setIsLoading(true);
@@ -15,8 +19,8 @@ export default function RevenueDashboard() {
         const response = await fetch(`http://localhost:5000/api/insight-data?dimension=${activeDimension}`);
         const data = await response.json();
         setInsightData(data);
-      } catch (error) {
-        console.error("Error:", error);
+      } catch (err) {
+        console.error("Error fetching insight data:", err);
       } finally {
         setIsLoading(false);
       }
@@ -24,7 +28,6 @@ export default function RevenueDashboard() {
     fetchInsightData();
   }, [activeDimension]);
 
-  // Define the functional categories based on your Firebase data
   const dimensions = [
     { id: "total", label: "Total Revenue" },
     { id: "category", label: "By Category" },
@@ -32,11 +35,29 @@ export default function RevenueDashboard() {
     { id: "campaign", label: "Campaign ROI" }
   ];
 
+  const handleViewDetailedAnalysis = async () => {
+    setIsModalOpen(true);
+    setIsModalLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/detailed-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendation: insightData?.optimization?.title }),
+      });
+      const data = await response.json();
+      setModalContent(data.report);
+    } catch { // ✅ FIXED: Removed unused (error) variable to satisfy ESLint
+      setModalContent("Error: Could not reach the Strategist Agent.");
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
   if (isLoading && !insightData) return <div className="p-10 text-white animate-pulse text-center">Crunching Firebase data...</div>;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Primary Tab Navigation (Insight vs Optimize) */}
+      {/* Primary Tab Navigation */}
       <div className="flex space-x-4 mb-4">
         <button onClick={() => setActiveTab("insight")} className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "insight" ? "bg-[#8B5CF6] text-white shadow-lg" : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB]"}`}>Insight & Prediction</button>
         <button onClick={() => setActiveTab("optimize")} className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "optimize" ? "bg-[#8B5CF6] text-white shadow-lg" : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB]"}`}>Optimize</button>
@@ -45,7 +66,6 @@ export default function RevenueDashboard() {
       <div className="flex-1 border border-[#7F92BB]/30 rounded-2xl p-6 bg-[#0B1220]/50 shadow-inner overflow-hidden flex flex-col">
         {activeTab === "insight" && (
           <div className="flex flex-col flex-1 animate-in fade-in duration-500">
-            {/* ✅ Functional Dimension Filters */}
             <div className="flex flex-wrap gap-3 mb-8">
               {dimensions.map((dim) => (
                 <button 
@@ -63,7 +83,6 @@ export default function RevenueDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[300px]">
               <div className="lg:col-span-2 bg-[#121826] p-6 rounded-xl border border-[#7F92BB]/20 shadow-inner flex flex-col relative">
                 <div className="flex-1 w-full min-h-[220px]">
-                  {/* RevenueChart will now receive data based on the selection */}
                   <RevenueChart 
                     data={insightData?.chartData} 
                     transitionDate={insightData?.todayDate} 
@@ -80,12 +99,8 @@ export default function RevenueDashboard() {
           </div>
         )}
         
-        {/* ==========================================
-            FEATURE 2: Optimization & Simulation (Optimize Tab)
-            ========================================== */}
-        {activeTab === "optimize" && (
+        {activeTab === "optimize" && insightData?.optimization && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 animate-in fade-in zoom-in-95 duration-300">
-            
             <div className="bg-[#0B1220] p-6 rounded-xl border border-[#7F92BB]/20 flex flex-col justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white mb-6">
@@ -126,11 +141,23 @@ export default function RevenueDashboard() {
                 {insightData.optimization.reasoning}
               </p>
               <div className="mt-4 flex justify-end">
-                 <button className="bg-[#1F2937] hover:bg-[#374151] border border-[#7F92BB]/30 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all">View Detailed Analysis</button>
+                <button 
+                  onClick={handleViewDetailedAnalysis}
+                  className="bg-[#1F2937] hover:bg-[#374151] border border-[#7F92BB]/30 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                >
+                  View Detailed Analysis
+                </button>
               </div>
             </div>
           </div>
         )}
+
+        <DetailedAnalysisModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          content={modalContent}
+          isLoading={isModalLoading}
+        />
       </div>
     </div>
   );
