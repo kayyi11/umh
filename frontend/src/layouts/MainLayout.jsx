@@ -135,18 +135,38 @@ export default function MainLayout() {
 
   return (
     <div className="flex h-screen bg-[#0B1220] font-sans text-slate-200 overflow-hidden">
-      {/* Dynamic Sidebar Container 
-        Width toggles between 16rem (open) and 5rem (collapsed) 
-      */}
+      {/* Dynamic Sidebar Container */}
       <aside
         className={`bg-[#1F2937] shadow-xl flex flex-col border-r border-[#7F92BB]/20 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "w-64" : "w-20"
         }`}
       >
-        {/* Hamburger Header (Icon only) */}
+        {/* Sidebar Header: Logo & Hamburger Menu */}
         <div
-          className={`p-4 h-20 border-b border-[#7F92BB]/20 flex items-center ${isSidebarOpen ? "px-6" : "justify-center"}`}
+          className={`h-20 border-b border-[#7F92BB]/20 flex items-center transition-all duration-300 ${
+            isSidebarOpen ? "px-6 justify-between" : "px-0 justify-center"
+          }`}
         >
+          {/* Brand Logo (hides when collapsed) */}
+          <div
+            className={`flex items-center overflow-hidden transition-all duration-300 ${
+              isSidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0 hidden"
+            }`}
+          >
+            <img
+              src="/logo.png"
+              alt="Z Intelligence Logo"
+              className="h-8 w-auto object-contain drop-shadow-md"
+              onError={(e) => {
+                e.target.style.display = "none";
+                e.target.nextSibling.style.display = "block";
+              }}
+            />
+            <span className="hidden text-white font-extrabold text-xl tracking-widest whitespace-nowrap">
+              Z INTELLIGENCE
+            </span>
+          </div>
+
           {/* Hamburger Toggle Button */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
