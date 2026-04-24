@@ -3,109 +3,83 @@ import RevenueChart from "./RevenueChart";
 
 export default function RevenueDashboard() {
   const [activeTab, setActiveTab] = useState("insight");
+  const [activeDimension, setActiveDimension] = useState("total"); // ✅ Track chart category
   const [insightData, setInsightData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ Fetch real data from Firebase via Backend
+  // ✅ Re-fetch whenever activeDimension changes
   useEffect(() => {
     const fetchInsightData = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch("http://localhost:5000/api/insight-data");
+        const response = await fetch(`http://localhost:5000/api/insight-data?dimension=${activeDimension}`);
         const data = await response.json();
         setInsightData(data);
       } catch (error) {
-        console.error("Error fetching insight data:", error);
+        console.error("Error:", error);
       } finally {
         setIsLoading(false);
       }
     };
     fetchInsightData();
-  }, []);
+  }, [activeDimension]);
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5CF6]"></div>
-        <p className="animate-pulse">Retrieving live data from Firebase...</p>
-      </div>
-    );
-  }
+  // Define the functional categories based on your Firebase data
+  const dimensions = [
+    { id: "total", label: "Total Revenue" },
+    { id: "category", label: "By Category" },
+    { id: "platform", label: "By Platform" },
+    { id: "campaign", label: "Campaign ROI" }
+  ];
 
-  if (!insightData) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-red-400 p-10 text-center">
-        <p>⚠️ Intelligence Engine Offline</p>
-        <p className="text-xs text-slate-500 mt-2">Could not connect to http://localhost:5000. Ensure Flask is running.</p>
-      </div>
-    );
-  }
-  
+  if (isLoading && !insightData) return <div className="p-10 text-white animate-pulse text-center">Crunching Firebase data...</div>;
+
   return (
     <div className="flex flex-col h-full">
-      {/* ✅ Tab Navigation: This uses setActiveTab and fixes the ESLint error */}
+      {/* Primary Tab Navigation (Insight vs Optimize) */}
       <div className="flex space-x-4 mb-4">
-        <button
-          onClick={() => setActiveTab("insight")}
-          className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-            activeTab === "insight"
-              ? "bg-[#8B5CF6] text-white shadow-[0_4px_15px_-3px_rgba(139,92,246,0.5)]"
-              : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB] hover:text-white"
-          }`}
-        >
-          Insight & Prediction
-        </button>
-        <button
-          onClick={() => setActiveTab("optimize")}
-          className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-            activeTab === "optimize"
-              ? "bg-[#8B5CF6] text-white shadow-[0_4px_15px_-3px_rgba(139,92,246,0.5)]"
-              : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB] hover:text-white"
-          }`}
-        >
-          Optimize
-        </button>
+        <button onClick={() => setActiveTab("insight")} className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "insight" ? "bg-[#8B5CF6] text-white shadow-lg" : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB]"}`}>Insight & Prediction</button>
+        <button onClick={() => setActiveTab("optimize")} className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "optimize" ? "bg-[#8B5CF6] text-white shadow-lg" : "bg-transparent border border-[#7F92BB]/40 text-[#7F92BB]"}`}>Optimize</button>
       </div>
 
       <div className="flex-1 border border-[#7F92BB]/30 rounded-2xl p-6 bg-[#0B1220]/50 shadow-inner overflow-hidden flex flex-col">
-        {/* ==========================================
-            FEATURE 1: Total Revenue Overview (Insight Tab)
-            ========================================== */}
         {activeTab === "insight" && (
-          <div className="flex flex-col flex-1 animate-in fade-in duration-500 overflow-y-auto">
+          <div className="flex flex-col flex-1 animate-in fade-in duration-500">
+            {/* ✅ Functional Dimension Filters */}
             <div className="flex flex-wrap gap-3 mb-8">
-              {["Total Revenue", "Sales Performance", "Risk & Alerts", "Inventory Health", "Customer Insights", "Campaign & Marketing"].map((tab) => (
+              {dimensions.map((dim) => (
                 <button 
-                  key={tab} 
-                  className="px-5 py-2 rounded-lg text-xs font-semibold bg-transparent border border-[#7F92BB]/30 text-slate-300 hover:bg-white/5 transition-all"
+                  key={dim.id} 
+                  onClick={() => setActiveDimension(dim.id)}
+                  className={`px-5 py-2 rounded-lg text-xs font-semibold transition-all ${activeDimension === dim.id ? "bg-[#8B5CF6] text-white" : "bg-transparent border border-[#7F92BB]/30 text-slate-300 hover:bg-white/5"}`}
                 >
-                  {tab}
+                  {dim.label}
                 </button>
               ))}
             </div>
 
-            <h3 className="text-xl font-bold text-white mb-4">Total Revenue Overview</h3>
+            <h3 className="text-xl font-bold text-white mb-4">Revenue Analytics: {dimensions.find(d => d.id === activeDimension).label}</h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[300px]">
               <div className="lg:col-span-2 bg-[#121826] p-6 rounded-xl border border-[#7F92BB]/20 shadow-inner flex flex-col relative">
-                <h4 className="text-lg font-bold text-white mb-6">Revenue Trend & Prediction</h4>
                 <div className="flex-1 w-full min-h-[220px]">
+                  {/* RevenueChart will now receive data based on the selection */}
                   <RevenueChart 
-                    data={insightData.chartData} 
-                    transitionDate={insightData.todayDate} 
+                    data={insightData?.chartData} 
+                    transitionDate={insightData?.todayDate} 
+                    type={insightData?.type}
                   />
                 </div>
               </div>
 
               <div className="bg-[#1F2937] p-6 rounded-xl border border-[#8B5CF6] flex flex-col">
                 <h4 className="text-[#A855F7] font-bold text-lg mb-4">AI Explanation</h4>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                  {insightData.aiExplanation}
-                </p>
+                <p className="text-slate-300 text-sm leading-relaxed">{insightData?.aiExplanation}</p>
               </div>
             </div>
           </div>
         )}
-
+        
         {/* ==========================================
             FEATURE 2: Optimization & Simulation (Optimize Tab)
             ========================================== */}
