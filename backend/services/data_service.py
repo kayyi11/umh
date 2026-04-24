@@ -4,16 +4,32 @@ from services.firestore_client import db
 
 class DataService:
     def extract_content_from_file(self, file, file_type):
-        # SIMULATION: This logic represents your AI Agent extracting data
-        if file_type == 'voice':
-            return [{"item": "Restock Chicken", "price": 12.50, "conf": 88}]
-        elif file_type == 'pdf':
+        """
+        Simulates AI extraction logic based on system architecture.
+        In a real scenario, this would call Z.AI's GLM or an OCR/STT engine.
+        """
+        filename = file.filename.lower()
+
+        if file_type == 'voice' or filename.endswith(('.m4a', '.mp3', '.wav')):
+            # Simulate Speech-to-Text extraction
             return [
-                {"item": "Bulk Rice (50kg)", "price": 180.00, "conf": 98},
-                {"item": "Cooking Oil", "price": 45.00, "conf": 95}
+                {"item": "Note: Order more Chicken", "price": 0.00, "conf": 85},
+                {"item": "Note: Supplier price hike mentioned", "price": 0.00, "conf": 90}
             ]
-        else: # Receipt/Image
-            return [{"item": "Garlic", "price": 7.00, "conf": 92}]
+        
+        elif file_type == 'pdf' or filename.endswith('.pdf'):
+            # Simulate PDF/Invoice Parsing
+            return [
+                {"item": "Bulk Jasmine Rice 50kg", "price": 185.50, "conf": 98},
+                {"item": "Vegetable Oil 5L", "price": 42.00, "conf": 96},
+                {"item": "Service Charge", "price": 5.00, "conf": 99}
+            ]
+            
+        else: # Default (Receipts/Images/Drag-Drop)
+            return [
+                {"item": "Fresh Garlic 1kg", "price": 8.50, "conf": 92},
+                {"item": "Red Onions 2kg", "price": 12.00, "conf": 94}
+            ]
 
     def get_workspace_stats(self):
         try:
