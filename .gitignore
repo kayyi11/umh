@@ -28,7 +28,9 @@ dist-ssr
 majuai-firebase-adminsdk.json
 
 .venv/
-.venv311/
+.venv*/
+venv/
+venv*/
 __pycache__/
 *.pyc
 .env
