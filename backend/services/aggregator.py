@@ -107,13 +107,22 @@ def _compute_metrics() -> dict:
     return_rate   = return_count / order_count * 100
     total_refunds = sum(r.get('refund_amount', 0) or 0 for r in this_returns)
 
-    # ── Top products by revenue ───────────────────────────────────────────────
+    # ── Top products by revenue & net profit; units sold per listing ─────────
     product_rev: dict[str, float] = defaultdict(float)
+    product_np: dict[str, float] = defaultdict(float)
+    units_by_listing: dict[str, float] = defaultdict(float)
     for o in this_orders:
-        name = o.get('product_name') or 'Unknown'
-        product_rev[name] += o.get('order_amount', 0) or 0
+        name   = o.get('product_name') or 'Unknown'
+        amount = o.get('order_amount', 0) or 0
+        cogs   = (o.get('cogs_per_unit') or 0) * (o.get('quantity', 0) or 0)
+        lid    = o.get('listing_id')
+        product_rev[name] += amount
+        product_np[name]  += amount - cogs
+        if lid:
+            units_by_listing[lid] += o.get('quantity', 0) or 0
 
-    top_3 = sorted(product_rev, key=product_rev.__getitem__, reverse=True)[:3]
+    top_3           = sorted(product_rev, key=product_rev.__getitem__, reverse=True)[:3]
+    top_3_by_profit = sorted(product_np,  key=product_np.__getitem__,  reverse=True)[:3]
 
     # ── Inventory alerts ──────────────────────────────────────────────────────
     # Keep the most-recent snapshot per listing.
@@ -153,8 +162,23 @@ def _compute_metrics() -> dict:
     inventory_alerts.sort(key=lambda a: (0 if a['alert'] == 'P1'
                                           else 1 if a['alert'] == 'P2' else 2))
 
-    p1_count = sum(1 for a in inventory_alerts if a['alert'] == 'P1')
-    p2_count = sum(1 for a in inventory_alerts if a['alert'] == 'P2')
+    p1_alerts = sum(1 for a in inventory_alerts if a['alert'] == 'P1')
+    p2_alerts = sum(1 for a in inventory_alerts if a['alert'] == 'P2')
+
+    # ── Inventory days remaining (minimum across all listings with sales) ─────
+    _window = 7
+    min_days: float | None = None
+    for lid, snap in latest.items():
+        stock     = (snap.get('quantity_on_hand')
+                     or snap.get('stock_level')
+                     or snap.get('quantity')
+                     or 0)
+        avg_daily = units_by_listing.get(lid, 0) / _window
+        if avg_daily > 0:
+            days_left = stock / avg_daily
+            if min_days is None or days_left < min_days:
+                min_days = days_left
+    inventory_days_remaining: float | None = round(min_days, 1) if min_days is not None else None
 
     return {
         # Revenue / profit
@@ -174,13 +198,15 @@ def _compute_metrics() -> dict:
         'voucher_impact':         round(this_voucher, 2),
 
         # Products
-        'top_3_products':         top_3,
-        'product_revenue':        {k: round(v, 2) for k, v in product_rev.items()},
+        'top_3_products':              top_3,
+        'top_3_products_by_net_profit': top_3_by_profit,
+        'product_revenue':             {k: round(v, 2) for k, v in product_rev.items()},
 
         # Inventory
-        'inventory_alerts':       inventory_alerts,
-        'p1_count':               p1_count,
-        'p2_count':               p2_count,
+        'inventory_alerts':            inventory_alerts,
+        'inventory_days_remaining':    inventory_days_remaining,
+        'p1_alerts':                   p1_alerts,
+        'p2_alerts':                   p2_alerts,
 
         # Customers
         'new_customers_this_week': len(new_custs),
