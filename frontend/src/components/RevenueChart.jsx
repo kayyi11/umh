@@ -9,9 +9,34 @@ import {
   ReferenceLine,
 } from "recharts";
 
+// ✅ 1. Move CustomTooltip OUTSIDE of the RevenueChart component
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1F2937] border border-[#7F92BB]/30 p-3 rounded-lg shadow-xl">
+        <p className="text-slate-300 text-xs mb-2 font-bold">{label}</p>
+        {payload.map((entry, index) => (
+          <div
+            key={index}
+            className="flex items-center space-x-2 text-sm font-semibold"
+          >
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            ></div>
+            <span style={{ color: entry.color }}>
+              {entry.name === "actual" ? "Actual" : "Forecast"}: RM{" "}
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function RevenueChart() {
-  // 1. Dynamic Data Array
-  // Notice how "Apr 21" has BOTH actual and forecast values to connect the two lines perfectly!
   const data = [
     { date: "14 Apr", actual: 2800 },
     { date: "15 Apr", actual: 2500 },
@@ -29,40 +54,12 @@ export default function RevenueChart() {
     { date: "27 Apr", forecast: 5230 },
   ];
 
-  // 2. Custom Tooltip for premium UI feel
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#1F2937] border border-[#7F92BB]/30 p-3 rounded-lg shadow-xl">
-          <p className="text-slate-300 text-xs mb-2 font-bold">{label}</p>
-          {payload.map((entry, index) => (
-            <div
-              key={index}
-              className="flex items-center space-x-2 text-sm font-semibold"
-            >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              ></div>
-              <span style={{ color: entry.color }}>
-                {entry.name === "actual" ? "Actual" : "Forecast"}: RM{" "}
-                {entry.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={data}
         margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
       >
-        {/* Subtle background grid */}
         <CartesianGrid
           strokeDasharray="3 3"
           stroke="#7F92BB"
@@ -70,7 +67,6 @@ export default function RevenueChart() {
           vertical={false}
         />
 
-        {/* X & Y Axes */}
         <XAxis
           dataKey="date"
           stroke="#7F92BB"
@@ -87,16 +83,13 @@ export default function RevenueChart() {
           tickFormatter={(value) => `RM ${value / 1000}k`}
         />
 
-        {/* Interactive Tooltip */}
         <Tooltip
           content={<CustomTooltip />}
           cursor={{ stroke: "#8B5CF6", strokeWidth: 1, strokeDasharray: "4 4" }}
         />
 
-        {/* Vertical line indicating "Today / Forecast Start" */}
         <ReferenceLine x="21 Apr" stroke="#A855F7" strokeOpacity={0.4} />
 
-        {/* The Solid Blue Line for Actual Data */}
         <Line
           type="monotone"
           dataKey="actual"
@@ -106,7 +99,6 @@ export default function RevenueChart() {
           activeDot={{ r: 6, fill: "#fff", stroke: "#3B82F6", strokeWidth: 2 }}
         />
 
-        {/* The Dashed Purple Line for Forecast Data */}
         <Line
           type="monotone"
           dataKey="forecast"

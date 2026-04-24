@@ -1,3 +1,5 @@
+//frontend/src/components/ExtractionSummary.jsx
+
 export default function ExtractionSummary() {
   return (
     <div className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-[#7F92BB]/40 mt-6">
