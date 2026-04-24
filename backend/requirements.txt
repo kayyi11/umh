@@ -1,0 +1,6 @@
+Flask
+flask-cors
+crewai
+crewai-tools
+python-dotenv
+langchain-openai
