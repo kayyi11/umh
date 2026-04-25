@@ -2,6 +2,55 @@
 
 import { useState, useRef, useEffect } from "react";
 
+const PHASE_DEFS = [
+  { key: "detect", icon: "🔍", label: "Detect", desc: "Scanning inventory & risk flags" },
+  { key: "think",  icon: "🧠", label: "Think",  desc: "Analyzing trends & strategy" },
+  { key: "act",    icon: "⚡", label: "Act",    desc: "Drafting structured response" },
+];
+
+function ThinkingBubble({ phases }) {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-[#374151] border border-[#7F92BB]/20 rounded-xl rounded-tl-none p-4 text-sm max-w-[85%] shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full bg-[#A78BFA] animate-pulse" />
+          <span className="text-[#A78BFA] text-xs font-semibold tracking-wide">Agent is working...</span>
+        </div>
+        <div className="space-y-2">
+          {PHASE_DEFS.map(({ key, icon, label, desc }) => {
+            const phaseIdx   = phases.indexOf(key);
+            const isReceived = phaseIdx >= 0;
+            const isCurrent  = isReceived && phaseIdx === phases.length - 1;
+            const isDone     = isReceived && phaseIdx < phases.length - 1;
+            return (
+              <div
+                key={key}
+                className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${isReceived ? "opacity-100" : "opacity-25"}`}
+              >
+                <span className="w-5 text-center shrink-0">
+                  {isDone ? (
+                    <span className="text-green-400">✓</span>
+                  ) : isCurrent ? (
+                    <span className="inline-block animate-spin text-[#A78BFA]">↻</span>
+                  ) : (
+                    <span className="text-slate-500">{icon}</span>
+                  )}
+                </span>
+                <span className={`font-semibold ${isCurrent ? "text-[#A78BFA]" : isDone ? "text-green-400" : "text-slate-500"}`}>
+                  {label}:
+                </span>
+                <span className={`${isCurrent ? "text-slate-200 animate-pulse" : isDone ? "text-slate-300" : "text-slate-500"}`}>
+                  {desc}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatAiText(text) {
   return text
     .replace(/#{1,6}\s+/gm, '')
@@ -52,7 +101,8 @@ export default function StrategicAdvisor() {
     },
   ]);
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // NEW: Track if AI is thinking
+  const [isLoading, setIsLoading] = useState(false);
+  const [thinkingPhases, setThinkingPhases] = useState([]);
 
   const messagesEndRef = useRef(null);
 
@@ -62,53 +112,74 @@ export default function StrategicAdvisor() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]); // Scroll when messages OR loading status change
+  }, [messages, isLoading, thinkingPhases]);
 
-  // UPDATED: Function to talk to the Backend
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
 
     const userMessage = { id: Date.now(), sender: "user", text: inputValue };
-    
-    // 1. Add user message to screen
     setMessages(prev => [...prev, userMessage]);
     const queryToSend = inputValue;
     setInputValue("");
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
+    setThinkingPhases([]);
 
     try {
       const response = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-            query: queryToSend,
-            context: "insight_page" 
-        }),
+        body: JSON.stringify({ query: queryToSend }),
       });
-    
-      const data = await response.json();
-    
-      if (data.status === "success") {
-        setMessages(prev => [
-          ...prev,
-          { id: Date.now() + 1, sender: "ai", text: data.output }
-        ]);
-      } else {
-        // Show the error message from the backend
-        setMessages(prev => [
-          ...prev,
-          { 
-            id: Date.now() + 1, 
-            sender: "ai", 
-            text: `Backend error: ${data.message || "Unknown error"}` 
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let event;
+          try { event = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (event.type === "detect") {
+            setThinkingPhases(["detect"]);
+          } else if (event.type === "think") {
+            setThinkingPhases(["detect", "think"]);
+          } else if (event.type === "act") {
+            setThinkingPhases(["detect", "think", "act"]);
+          } else if (event.type === "done") {
+            setIsLoading(false);
+            setThinkingPhases([]);
+            setMessages(prev => [
+              ...prev,
+              { id: Date.now() + 1, sender: "ai", text: event.output, thoughts: event.thoughts },
+            ]);
+          } else if (event.type === "error") {
+            setIsLoading(false);
+            setThinkingPhases([]);
+            setMessages(prev => [
+              ...prev,
+              { id: Date.now() + 1, sender: "ai", text: `Error: ${event.content}` },
+            ]);
           }
-        ]);
+        }
       }
     } catch (error) {
       console.error("Network error:", error);
+      setIsLoading(false);
+      setThinkingPhases([]);
       setMessages(prev => [
         ...prev,
-        { id: Date.now() + 1, sender: "ai", text: "Cannot reach the server. Make sure Flask is running on port 5000." }
+        { id: Date.now() + 1, sender: "ai", text: "Cannot reach the server. Make sure Flask is running on port 5000." },
       ]);
     }
   };
@@ -125,7 +196,7 @@ export default function StrategicAdvisor() {
       {/* Chat History Container */}
       <div className="flex-1 relative min-h-[300px]">
         <div className="absolute inset-0 p-6 overflow-y-auto space-y-4 scroll-smooth">
-          {messages.map((msg) => (
+        {messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
@@ -137,19 +208,23 @@ export default function StrategicAdvisor() {
                     : "bg-[#374151] text-slate-200 border border-[#7F92BB]/20 rounded-tl-none shadow-sm"
                 }`}
               >
+                {/* Render thoughts in a distinct, muted block */}
+                {msg.sender === "ai" && msg.thoughts && (
+                  <div className="mb-3 p-3 bg-[#1F2937] border border-[#7F92BB]/30 rounded-lg text-xs text-slate-400 font-mono overflow-x-auto">
+                    <div className="text-[#A78BFA] font-bold mb-1 flex items-center gap-2">
+                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                       Agent Thought Process
+                    </div>
+                    {msg.thoughts}
+                  </div>
+                )}
+                
                 {msg.sender === "ai" ? <AiMessage text={msg.text} /> : msg.text}
               </div>
             </div>
           ))}
 
-          {/* NEW: Loading Indicator */}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-[#374151] text-slate-400 p-4 rounded-xl text-xs animate-pulse border border-[#7F92BB]/10">
-                Working hard on it...
-              </div>
-            </div>
-          )}
+          {isLoading && <ThinkingBubble phases={thinkingPhases} />}
           
           <div ref={messagesEndRef} className="h-1" />
         </div>

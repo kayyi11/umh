@@ -107,6 +107,45 @@ def _compute_metrics() -> dict:
     return_rate   = return_count / order_count * 100
     total_refunds = sum(r.get('refund_amount', 0) or 0 for r in this_returns)
 
+    # ── Daily breakdown (7 days, oldest first) ───────────────────────────────
+    from datetime import date as _date
+    days = [
+        (this_start + timedelta(days=i)).date()
+        for i in range(7)
+    ]
+    daily_buckets: dict[_date, dict] = {
+        d: {'revenue': 0.0, 'cogs': 0.0, 'orders': 0, 'returns': 0}
+        for d in days
+    }
+    for o in this_orders:
+        dt = _ensure_tz(o.get('order_date'))
+        if dt:
+            dk = dt.date()
+            if dk in daily_buckets:
+                daily_buckets[dk]['revenue'] += o.get('order_amount', 0) or 0
+                daily_buckets[dk]['cogs'] += (o.get('cogs_per_unit') or 0) * (o.get('quantity', 0) or 0)
+                daily_buckets[dk]['orders'] += 1
+    for r in this_returns:
+        dt = _ensure_tz(r.get('return_date'))
+        if dt:
+            dk = dt.date()
+            if dk in daily_buckets:
+                daily_buckets[dk]['returns'] += 1
+
+    daily_revenue_arr, daily_cogs_arr, daily_net_profit_arr, \
+        daily_net_margin_arr, daily_return_rate_arr = [], [], [], [], []
+    for d in days:
+        rev  = daily_buckets[d]['revenue']
+        cogs = daily_buckets[d]['cogs']
+        np_v = rev - cogs
+        daily_revenue_arr.append(round(rev, 2))
+        daily_cogs_arr.append(round(cogs, 2))
+        daily_net_profit_arr.append(round(np_v, 2))
+        daily_net_margin_arr.append(round((np_v / rev * 100) if rev > 0 else 0.0, 2))
+        n_ord = daily_buckets[d]['orders']
+        n_ret = daily_buckets[d]['returns']
+        daily_return_rate_arr.append(round((n_ret / n_ord * 100) if n_ord > 0 else 0.0, 2))
+
     # ── Top products by revenue & net profit; units sold per listing ─────────
     product_rev: dict[str, float] = defaultdict(float)
     product_np: dict[str, float] = defaultdict(float)
@@ -212,6 +251,13 @@ def _compute_metrics() -> dict:
 
         # Customers
         'new_customers_this_week': len(new_custs),
+
+        # Daily breakdowns (7 values, oldest → newest)
+        'daily_revenue':     daily_revenue_arr,
+        'daily_cogs':        daily_cogs_arr,
+        'daily_net_profit':  daily_net_profit_arr,
+        'daily_net_margin':  daily_net_margin_arr,
+        'daily_return_rate': daily_return_rate_arr,
 
         # Meta
         'period_start': this_start.isoformat(),

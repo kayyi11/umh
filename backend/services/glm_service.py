@@ -21,8 +21,9 @@ def get_glm_model():
 
     return LLM(
         # Use 'openai/' prefix because ilmu.ai uses the OpenAI-standard format
-        model=f"openai/{model_name}", 
+        model=f"openai/{model_name}",
         base_url=api_base,
         api_key=api_key,
-        temperature=0.2
+        temperature=0.2,
+        timeout=60,
     )

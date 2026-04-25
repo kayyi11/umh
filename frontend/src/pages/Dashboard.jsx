@@ -62,8 +62,11 @@ export default function Dashboard() {
 
   // ── Derived values (safe when metrics is null) ─────────────────────────────
 
-  const revenueData = metrics?.daily_revenue?.map((d) => d.revenue) ?? [10, 15, 8, 20, 14, 25, 22, 30, 28];
-  const costData = [20, 18, 22, 16, 25, 20, 28, 24, 26];
+  const revenueData    = metrics?.daily_revenue     ?? [10, 15, 8, 20, 14, 25, 22, 30, 28];
+  const costData       = metrics?.daily_cogs        ?? [20, 18, 22, 16, 25, 20, 28, 24, 26];
+  const netProfitData  = metrics?.daily_net_profit  ?? [5, 8, 4, 12, 7, 14, 11];
+  const netMarginData  = metrics?.daily_net_margin  ?? [15, 18, 12, 20, 16, 22, 19];
+  const returnRateData = metrics?.daily_return_rate ?? [3, 2, 4, 1, 3, 2, 2];
 
   // Revenue widget
   const revenueValue = metrics
@@ -116,6 +119,21 @@ export default function Dashboard() {
   // Top products
   const top3 = metrics?.top_3_products ?? [];
   const productRevenue = metrics?.product_revenue ?? {};
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-6">
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 rounded-full border-4 border-[#7F92BB]/20"></div>
+          <div className="absolute inset-0 rounded-full border-4 border-t-[#34D399] animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-3xl">📊</div>
+        </div>
+        <div className="text-center space-y-2">
+          <p className="text-white text-xl font-bold">Crunching the numbers...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -183,10 +201,7 @@ export default function Dashboard() {
         <DecisionCard optimization={optimization} />
       </div>
 
-      {/* ==========================================
-          Bottom Section ROW 1: Trend Widgets & AI Feed
-          (Added mb-6 here to separate from the new row)
-          ========================================== */}
+      {/* Row 1: Trend Widgets + Top Selling Products */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
         <TrendWidget
           title="Revenue"
@@ -208,78 +223,23 @@ export default function Dashboard() {
           chartType="inventory"
         />
 
-        {/* Live AI Processing Feed */}
+        {/* Top Best Selling Products */}
         <div className="bg-[#1F2937] p-6 rounded-xl shadow-lg border border-[#7F92BB]/40 flex flex-col h-full min-h-[190px]">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-white">Live AI Feed</h2>
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#34D399]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#34D399] animate-pulse"></span>
-              <span>Analyzing sales...</span>
-            </div>
-          </div>
-          <div className="space-y-4 flex-1 flex flex-col justify-center">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="flex items-center space-x-4">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                <div className="flex-1 h-2.5 bg-white/10 rounded-full"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ==========================================
-          Bottom Section ROW 2: Additional Metrics
-          ========================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 pb-12">
-
-        {/* Return Rate */}
-        <TrendWidget
-          title="Return Rate"
-          value={returnRateValue}
-          chartType="cost"
-          data={costData}
-        />
-
-        {/* Net Margin */}
-        <TrendWidget
-          title="Net Margin"
-          value={netMarginValue}
-          statusText={netMarginStatusText}
-          statusType={netMarginStatusType}
-          chartType="revenue"
-          data={revenueData}
-        />
-
-        {/* Net Profit */}
-        <TrendWidget
-          title="Net profit"
-          value={netProfitValue}
-          statusText={revenueStatusText}
-          statusType={revenueStatusType}
-          chartType="cost"
-          data={revenueData}
-        />
-
-        {/* Top Best Selling products list */}
-        <div className="bg-[#1F2937] p-6 rounded-xl shadow-lg border border-[#7F92BB]/40 flex flex-col h-full min-h-[190px]">
-          <h2 className="text-[13px] font-semibold text-slate-300 mb-5">Top Best Selling products</h2>
-
+          <h2 className="text-[13px] font-semibold text-slate-300 mb-5">Top Best Selling Products</h2>
           <div className="flex-1 flex flex-col justify-center space-y-4">
-            {metrics === null ? (
-              // Loading — keep original placeholder rows
+            {top3.length === 0 ? (
               <>
-                <div className="flex justify-between items-center border-b border-[#7F92BB]/10 pb-2">
+                <div className="flex justify-between items-center border-b border-[#7F92BB]/10 pb-3">
                   <span className="text-white text-sm font-medium">1. Hainanese Chicken Rice</span>
-                  <span className="text-[#34D399] font-bold text-sm">420 qty</span>
+                  <span className="text-[#34D399] font-bold text-sm">RM 420.00</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-[#7F92BB]/10 pb-2">
+                <div className="flex justify-between items-center border-b border-[#7F92BB]/10 pb-3">
                   <span className="text-white text-sm font-medium">2. Roasted Chicken Rice</span>
-                  <span className="text-[#34D399] font-bold text-sm">385 qty</span>
+                  <span className="text-[#34D399] font-bold text-sm">RM 385.00</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center pb-3">
                   <span className="text-white text-sm font-medium">3. BBQ Pork Rice</span>
-                  <span className="text-[#34D399] font-bold text-sm">210 qty</span>
+                  <span className="text-[#34D399] font-bold text-sm">RM 210.00</span>
                 </div>
               </>
             ) : (
@@ -293,7 +253,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={name}
-                    className={`flex justify-between items-center pb-2 ${
+                    className={`flex justify-between items-center pb-3 ${
                       isLast ? "" : "border-b border-[#7F92BB]/10"
                     }`}
                   >
@@ -307,7 +267,32 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
 
+      {/* Row 2: Additional Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-12">
+        <TrendWidget
+          title="Return Rate"
+          value={returnRateValue}
+          chartType="cost"
+          data={returnRateData}
+        />
+        <TrendWidget
+          title="Net Margin"
+          value={netMarginValue}
+          statusText={netMarginStatusText}
+          statusType={netMarginStatusType}
+          chartType="revenue"
+          data={netMarginData}
+        />
+        <TrendWidget
+          title="Net Profit"
+          value={netProfitValue}
+          statusText={revenueStatusText}
+          statusType={revenueStatusType}
+          chartType="cost"
+          data={netProfitData}
+        />
       </div>
     </>
   );

@@ -1,6 +1,17 @@
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
+from litellm.exceptions import RateLimitError, Timeout
 from services.firestore_client import db
 from services.glm_service import get_glm_model
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = (
+    "You are the Business Strategist Agent for MajuAI, a platform serving Malaysian SME merchants. "
+    "When given a recommendation type, produce a professional 3-paragraph deep-dive report. "
+    "Use markdown for bolding key terms. Focus on Malaysian SME context, local market conditions, "
+    "and actionable insights grounded in real business logic."
+)
 
 def calculate_insight_data(dimension='total'):
     orders_ref = db.collection('orders').stream()
@@ -54,43 +65,42 @@ def calculate_insight_data(dimension='total'):
     }
 
 def generate_detailed_report(recommendation_type):
+    llm = get_glm_model()
+    user_prompt = (
+        f"Write a professional 3-paragraph deep-dive analysis for this recommendation: "
+        f"{recommendation_type}. Focus on Malaysian SME context."
+    )
     try:
-        llm = get_glm_model()
-        
-        prompt = f"""
-        You are the Business Strategist Agent for MajuAI. 
-        The user wants a deep-dive analysis on this recommendation: {recommendation_type}.
-        
-        Write a professional 3-paragraph report. 
-        Use markdown for bolding. 
-        Focus on Malaysian SME context.
-        """
-        
-        response = llm.complete(prompt)
-        
-        # Check if response has content (handling different library versions)
-        report_text = getattr(response, 'text', str(response))
-        
-        if not report_text or len(report_text) < 10:
-            raise ValueError("Empty response from AI")
-            
-        return report_text
-
+        response = llm.call(messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ])
+        return {
+            "status": "success",
+            "content": response,
+            "source": "glm",
+        }
+    except RateLimitError as e:
+        logger.error(f"GLM rate limit: {e}")
+        return {
+            "status": "degraded",
+            "content": None,
+            "error": "rate_limit",
+            "source": "glm",
+        }
+    except Timeout as e:
+        logger.error(f"GLM request timed out: {e}")
+        return {
+            "status": "degraded",
+            "content": None,
+            "error": "timeout",
+            "source": "glm",
+        }
     except Exception as e:
-        print(f"AI Generation Error: {e}")
-        # ✅ Hackathon Fallback: If AI fails, return a pre-generated high-quality analysis 
-        # so your presentation isn't ruined!
-        return f"""
-### 📊 Strategic Analysis: {recommendation_type}
-
-**Market Context**
-Current data from your Shopee and Lazada stores indicates a 15% increase in procurement costs for protein-based inventory. In the Malaysian market, consumer sentiment remains strong for 'Value Meals', but price sensitivity is increasing.
-
-**Data Evidence**
-- **Customer Retention:** 65% of your 'Gold' tier customers purchase this item weekly.
-- **Competitor Benchmarking:** Your current price is RM1.20 lower than the neighborhood average.
-- **Profit Impact:** Shifting spend or adjusting price as suggested will recover approximately RM450 in lost monthly margin.
-
-**Risk Assessment**
-The primary risk is a short-term volume drop (est. 3-5%). We recommend monitoring the **Return Rate** over the next 14 days to ensure quality perception remains high.
-        """
+        logger.error(f"GLM call failed: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "content": None,
+            "error": str(e),
+            "source": "glm",
+        }

@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import RevenueChart from "./RevenueChart";
 import DetailedAnalysisModal from "./DetailedAnalysisModal"; // ✅ Fixed import typo
 
 export default function RevenueDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("insight");
   const [activeDimension, setActiveDimension] = useState("total"); 
   const [insightData, setInsightData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState("");
+  const [modalContent, setModalContent] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   // Fetch real data from Firebase via Backend
   useEffect(() => {
@@ -38,6 +42,8 @@ export default function RevenueDashboard() {
   const handleViewDetailedAnalysis = async () => {
     setIsModalOpen(true);
     setIsModalLoading(true);
+    setModalContent(null);
+    setModalError(null);
     try {
       const response = await fetch("http://localhost:5000/api/detailed-analysis", {
         method: "POST",
@@ -45,11 +51,43 @@ export default function RevenueDashboard() {
         body: JSON.stringify({ recommendation: insightData?.optimization?.title }),
       });
       const data = await response.json();
-      setModalContent(data.report);
-    } catch { // ✅ FIXED: Removed unused (error) variable to satisfy ESLint
-      setModalContent("Error: Could not reach the Strategist Agent.");
+      if (!response.ok || data.status !== "success") {
+        setModalError(data.error || "AI service temporarily unavailable.");
+      } else {
+        setModalContent(data.report);
+      }
+    } catch {
+      setModalError("Could not reach the AI service. Check your connection.");
     } finally {
       setIsModalLoading(false);
+    }
+  };
+
+  const handleSimulate = async () => {
+    setIsSimulating(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/simulate-scenario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy: insightData.optimization.title }),
+      });
+      // Inside handleSimulate in RevenueDashboard.jsx
+      const data = await response.json();
+
+      setInsightData(prev => ({
+        ...prev,
+        simulationMetrics: data.newMetrics,
+        // Update the big green percentage to match the new simulation
+        optimization: {
+          ...prev.optimization,
+          profitGrowth: `+${data.newMetrics.find(m => m.label === "Net ROI").change}%`,
+          confidence: "High (Simulated)"
+        }
+      }));
+    } catch (err) {
+      console.error("Simulation failed:", err);
+    } finally {
+      setIsSimulating(false);
     }
   };
 
@@ -113,8 +151,14 @@ export default function RevenueDashboard() {
                 <p className="text-sm text-slate-400">Confidence: <span className="text-[#34D399] font-medium">{insightData.optimization.confidence}</span></p>
               </div>
               <div className="flex items-center space-x-4 mt-8">
-                <button className="flex-1 bg-[#7C3AED] hover:bg-[#8B5CF6] text-white py-2.5 rounded-lg text-sm font-semibold transition-all">Simulate Scenario</button>
-                <button className="flex-1 border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 py-2.5 rounded-lg text-sm font-semibold transition-all">Apply to Actions</button>
+                <button 
+                  onClick={handleSimulate}
+                  disabled={isSimulating}
+                  className={`flex-1 bg-[#7C3AED] hover:bg-[#8B5CF6] text-white py-2.5 rounded-lg text-sm font-semibold transition-all ${isSimulating ? 'opacity-50 animate-pulse' : ''}`}
+                >
+                  {isSimulating ? "Simulating..." : "Simulate Scenario"}
+                </button>
+                <button onClick={() => navigate("/actions")} className="flex-1 border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 py-2.5 rounded-lg text-sm font-semibold transition-all">Apply to Actions</button>
               </div>
             </div>
 
@@ -152,11 +196,13 @@ export default function RevenueDashboard() {
           </div>
         )}
 
-        <DetailedAnalysisModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
+        <DetailedAnalysisModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
           content={modalContent}
           isLoading={isModalLoading}
+          error={modalError}
+          onRetry={handleViewDetailedAnalysis}
         />
       </div>
     </div>
