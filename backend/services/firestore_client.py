@@ -4,7 +4,7 @@ from firebase_admin import credentials, firestore
 from google.cloud.firestore import Client
 
 _CRED_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'majuai-firebase-adminsdk.json'
+    os.path.dirname(__file__), '..', '..', 'zintelligence-firebase-adminsdk.json'
 )
 _DATABASE = 'majuai-db'
 

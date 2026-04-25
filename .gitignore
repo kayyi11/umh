@@ -25,7 +25,7 @@ dist-ssr
 
 .env
 .env.*
-majuai-firebase-adminsdk.json
+zintelligence-firebase-adminsdk.json
 
 .venv/
 .venv*/

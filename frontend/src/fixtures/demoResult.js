@@ -21,7 +21,7 @@ export const DEMO_RESULT = {
   },
   agent_3_act: {
     draft_email:
-      "Subject: Request for Revised Pricing — Frozen Chicken (1kg)\n\nDear Mr. Tan,\n\nI hope this message finds you well. Following our internal cost review, we would like to discuss revised pricing for frozen chicken (1kg).\n\nOur current stock sits at 23 units against a reorder point of 50. We need to place an order within the next 3–5 days to avoid a stockout on Shopee and Lazada.\n\nWe would appreciate your best pricing for a bulk order of 200 units. Please revert at your earliest convenience.\n\nBest regards,\nManagement\nMajuAI Store",
+      "Subject: Request for Revised Pricing — Frozen Chicken (1kg)\n\nDear Mr. Tan,\n\nI hope this message finds you well. Following our internal cost review, we would like to discuss revised pricing for frozen chicken (1kg).\n\nOur current stock sits at 23 units against a reorder point of 50. We need to place an order within the next 3–5 days to avoid a stockout on Shopee and Lazada.\n\nWe would appreciate your best pricing for a bulk order of 200 units. Please revert at your earliest convenience.\n\nBest regards,\nManagement\nZ Intelligence Store",
     checklist: [
       "Update Shopee listing price to RM7.00",
       "Update Lazada listing price to RM7.00",

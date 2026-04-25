@@ -1,6 +1,6 @@
 """
 test_pipeline.py
-Integration tests for the MajuAI backend data pipeline (Tasks 1-5).
+Integration tests for the Z Intelligence backend data pipeline (Tasks 1-5).
 
 Run from the project root:
     py -m unittest backend/tests/test_pipeline.py -v

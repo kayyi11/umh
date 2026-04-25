@@ -4,13 +4,13 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 
 const app = admin.initializeApp({
-  credential: admin.credential.cert(require('./majuai-firebase-adminsdk.json')),
+  credential: admin.credential.cert(require('./zintelligence-firebase-adminsdk.json')),
 });
 
 const db = getFirestore(app, 'majuai-db');
 
 async function testConnection() {
-  console.log('Testing Firestore connection to majuai-db...\n');
+  console.log('Testing Firestore connection to zintelligence-db...\n');
 
   const collections = [
     'platforms', 'categories', 'customers', 'products',

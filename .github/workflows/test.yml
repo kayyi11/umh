@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt pytest
 
       - name: Write Firebase credentials
-        run: echo "$CREDS" > majuai-firebase-adminsdk.json
+        run: echo "$CREDS" > zintelligence-firebase-adminsdk.json
         env:
           CREDS: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
 

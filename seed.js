@@ -5,7 +5,7 @@ const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 // ── Initialise Firebase Admin ────────────────────────────────────────────────
 const app = admin.initializeApp({
-  credential: admin.credential.cert(require('./majuai-firebase-adminsdk.json')),
+  credential: admin.credential.cert(require('./zintelligence-firebase-adminsdk.json')),
 });
 
 const db = getFirestore(app, 'majuai-db');
