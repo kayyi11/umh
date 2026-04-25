@@ -11,8 +11,6 @@ CORS(app)
 # Register blueprints
 app.register_blueprint(chat_bp, url_prefix='/api')
 app.register_blueprint(insight_bp, url_prefix='/api') # 2. Register here
-app.register_blueprint(chat_bp, url_prefix='/api')
-app.register_blueprint(insight_bp, url_prefix='/api') # 2. Register here
 app.register_blueprint(report_bp, url_prefix='/api') # Register new blueprint
 
 if __name__ == '__main__':
