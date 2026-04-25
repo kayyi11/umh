@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
 
-export default function DecisionCard() {
+export default function DecisionCard({ optimization = null }) {
   const navigate = useNavigate();
+
+  const title = optimization?.title ?? "Increase";
+  const adjustment = optimization?.adjustment ?? "chicken rice price by RM0.50";
+  const profitGrowth = optimization?.profitGrowth ?? "+8%";
 
   return (
     <div className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-[#7F92BB]/40 flex flex-col justify-between h-full">
@@ -12,10 +16,9 @@ export default function DecisionCard() {
 
         <div className="flex items-start justify-between mb-2">
           <h3 className="text-[26px] font-bold max-w-sm leading-snug tracking-tight">
-            <span className="text-[#3B82F6]">Increase</span>{" "}
-            <span className="text-white">chicken rice price by RM0.50</span>
+            <span className="text-[#3B82F6]">{title}</span>{" "}
+            <span className="text-white">{adjustment}</span>
           </h3>
-          {/* Ellipsis menu trigger for additional actions */}
           <div
             className="text-slate-500 font-bold text-2xl tracking-widest cursor-pointer hover:text-slate-300 transition-colors"
             title="More options"
@@ -26,7 +29,7 @@ export default function DecisionCard() {
 
         <div className="mb-6 mt-4">
           <span className="inline-flex items-center rounded-md bg-[#064E3B] px-3 py-1.5 text-sm font-semibold text-[#34D399]">
-            +8% Profit Increase
+            {profitGrowth} Profit Increase
           </span>
         </div>
       </div>

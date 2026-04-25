@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import TrendWidget from "../components/TrendWidget";
 import AlertCard from "../components/AlertCard";
 import DecisionCard from "../components/DecisionCard";
-import { fetchMetrics } from "../services/api";
+import { fetchMetrics, fetchOptimization } from "../services/api";
 
 function getTimeAgo(date) {
   if (!date) return "10s ago";
@@ -18,16 +18,18 @@ function safeFixed(val, digits = 2) {
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null);
+  const [optimization, setOptimization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [timeAgo, setTimeAgo] = useState("10s ago");
 
   // Initial fetch
   useEffect(() => {
-    fetchMetrics()
-      .then((data) => {
-        setMetrics(data);
-        setLastUpdatedAt(data.computed_at ? new Date(data.computed_at) : null);
+    Promise.all([fetchMetrics(), fetchOptimization()])
+      .then(([metricsData, optimizationData]) => {
+        setMetrics(metricsData);
+        setLastUpdatedAt(metricsData.computed_at ? new Date(metricsData.computed_at) : null);
+        setOptimization(optimizationData);
         setLoading(false);
       })
       .catch((err) => {
@@ -178,7 +180,7 @@ export default function Dashboard() {
             </a>
           </div>
         </div>
-        <DecisionCard />
+        <DecisionCard optimization={optimization} />
       </div>
 
       {/* ==========================================

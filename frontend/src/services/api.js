@@ -83,3 +83,12 @@ export async function fetchMetrics() {
   const json = await response.json();
   return json.data;
 }
+
+export async function fetchOptimization() {
+  const response = await fetch('http://localhost:5000/api/insight-data?dimension=total');
+  if (!response.ok) {
+    throw new Error(`Insight API error: ${response.status}`);
+  }
+  const json = await response.json();
+  return json.optimization ?? null;
+}
