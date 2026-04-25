@@ -1,3 +1,5 @@
+//frontend/src/pages/Insight.jsx
+
 import StrategicAdvisor from "../components/StrategicAdvisor";
 import RevenueDashboard from "../components/RevenueDashboard";
 

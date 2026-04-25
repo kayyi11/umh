@@ -1,11 +1,54 @@
+//frontend/src/components/StrategicAdvisor.jsx
+
 import { useState, useRef, useEffect } from "react";
+
+function formatAiText(text) {
+  return text
+    .replace(/#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`{1,3}[^`]*`{1,3}/g, (m) => m.replace(/`/g, ''))
+    .replace(/^[-*+]\s+/gm, '• ')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^---+$/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function AiMessage({ text }) {
+  const lines = formatAiText(text).split('\n');
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => {
+        if (!line.trim()) return <div key={i} className="h-1.5" />;
+        if (line.startsWith('•')) {
+          return (
+            <div key={i} className="flex gap-2 pl-1">
+              <span className="text-[#A78BFA] mt-0.5 shrink-0">•</span>
+              <span>{line.slice(1).trim()}</span>
+            </div>
+          );
+        }
+        if (line.trim() === 'Do you need further clarification?') {
+          return (
+            <p key={i} className="text-[#A78BFA] text-xs mt-2 italic">
+              {line.trim()}
+            </p>
+          );
+        }
+        return <p key={i}>{line}</p>;
+      })}
+    </div>
+  );
+}
 
 export default function StrategicAdvisor() {
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: "ai",
-      text: "Hello! I am your Strategic Advisor. Based on the current data, revenue is projected to grow. How can I help you optimize your operations today?",
+      text: "I have all I need, how can I help you optimize your operations today?",
     },
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -37,7 +80,10 @@ export default function StrategicAdvisor() {
       const response = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: queryToSend }),
+        body: JSON.stringify({ 
+            query: queryToSend,
+            context: "insight_page" 
+        }),
       });
     
       const data = await response.json();
@@ -85,13 +131,13 @@ export default function StrategicAdvisor() {
               className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[85%] p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[85%] p-4 rounded-xl text-sm leading-relaxed ${
                   msg.sender === "user"
-                    ? "bg-[#8B5CF6] text-white rounded-tr-none shadow-md"
+                    ? "bg-[#8B5CF6] text-white rounded-tr-none shadow-md whitespace-pre-wrap"
                     : "bg-[#374151] text-slate-200 border border-[#7F92BB]/20 rounded-tl-none shadow-sm"
                 }`}
               >
-                {msg.text}
+                {msg.sender === "ai" ? <AiMessage text={msg.text} /> : msg.text}
               </div>
             </div>
           ))}
@@ -100,7 +146,7 @@ export default function StrategicAdvisor() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-[#374151] text-slate-400 p-4 rounded-xl text-xs animate-pulse border border-[#7F92BB]/10">
-                AI Agents are collaborating...
+                Working hard on it...
               </div>
             </div>
           )}

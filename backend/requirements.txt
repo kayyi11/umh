@@ -1,8 +1,7 @@
-Flask
-flask-cors
-crewai[litellm]
-crewai-tools
-python-dotenv
-langchain-openai
-firebase-admin
+flask>=3.0.0
+flask-cors>=5.0.0
+crewai==1.14.3
 litellm
+langchain-openai>=0.1.0
+firebase-admin>=6.5.0
+python-dotenv>=1.0.1

@@ -5,6 +5,8 @@ import DataPage from "./pages/DataPage";
 import DataWorkspace from "./pages/DataWorkspace";
 import Insight from "./pages/Insight";
 import QuickActions from "./pages/QuickActions";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
           <Route path="data/workspace" element={<DataWorkspace />} />
           <Route path="insight" element={<Insight />} />
           <Route path="actions" element={<QuickActions />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

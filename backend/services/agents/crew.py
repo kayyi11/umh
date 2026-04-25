@@ -51,17 +51,35 @@ def run_di_analysis(user_query):
         expected_output="A deep-dive explanation of the cause of the issue and a strategic recommendation."
     )
     
-    # Task 3: Execution Draft (The "Consolidated Report")
+    # Task 3: Structured, readable reply with emojis and bullet points
     task3 = Task(
         description="""
-            1. Summarize the Strategist's explanation of 'Why' the issue occurred.
-            2. State the 'Decision of the Day'.
-            3. Provide the professional communication drafts (WhatsApp/Email).
-            Combine all these into a single, beautiful report for the business owner.
+            Write a concise, well-structured response using ONLY this exact format — no deviations:
+
+            [One emoji] [One sentence summary of the key finding]
+
+            [Section emoji] What's happening:
+            • [Specific data point or observation]
+            • [Another data point if relevant]
+
+            [Section emoji] Recommended action:
+            • [One clear, actionable step]
+            • [Second step if needed]
+
+            [Closing emoji] [One sentence on expected outcome]
+
+            Do you need further clarification?
+
+            Rules:
+            - Use relevant emojis (e.g. 📉 for decline, 📦 for inventory, 💰 for revenue, ⚠️ for risk, ✅ for positive).
+            - Use • (bullet character) for all list items. Do NOT use *, -, or markdown.
+            - Do NOT use ** bold **, # headers, or any other markdown syntax.
+            - Keep every bullet point to one sentence. Maximum 6 bullet points total.
+            - Always end with exactly: "Do you need further clarification?"
         """,
         agent=executor,
         context=[task2],
-        expected_output="A complete Strategic Insight Report that starts with an explanation of the problem, followed by the action plan and message drafts."
+        expected_output="A structured plain-text response with emojis, • bullet points, and no markdown, ending with 'Do you need further clarification?'"
     )
 
     crew = Crew(
