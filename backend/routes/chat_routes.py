@@ -1,16 +1,38 @@
+import json
+import re
 import traceback
 
 from flask import Blueprint, jsonify, request
 
 try:
-    from services.agents.crew import run_di_analysis
+    from services.agents.crew import run_di_analysis, run_draft_actions
     from services.agents.tools import set_metrics
     _CREW_AVAILABLE = True
 except ImportError:
     run_di_analysis = None
+    run_draft_actions = None
     set_metrics = lambda m: None  # noqa: E731
     _CREW_AVAILABLE = False
 from services.aggregator import run_aggregation
+
+
+def _parse_json_array(text: str):
+    """Extract a JSON array from raw LLM output, tolerating code fences and preamble text."""
+    # Strip markdown code fences (```json ... ``` or ``` ... ```)
+    text = re.sub(r'```(?:json)?\s*', '', text).strip()
+    # Try a direct parse first (clean output)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Fall back: find the first [...] block in the text
+    match = re.search(r'\[[\s\S]*\]', text)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+    return None
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -55,5 +77,27 @@ def analyze():
         return jsonify({"status": "success", "output": result})
     except Exception as e:
         print("CRITICAL ERROR IN CREW:")
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@chat_bp.route('/draft-actions', methods=['POST'])
+def draft_actions():
+    if not _CREW_AVAILABLE:
+        return jsonify({"status": "error", "message": "crewai not installed"}), 503
+
+    try:
+        metrics_data, _ = run_aggregation(force=False)
+        set_metrics(metrics_data)
+
+        raw = run_draft_actions()
+        drafted = _parse_json_array(raw)
+
+        if drafted is None:
+            print(f"DRAFT ACTIONS: failed to parse agent output:\n{raw}")
+            return jsonify({"status": "error", "message": "Agent output could not be parsed", "raw": raw}), 500
+
+        return jsonify({"status": "success", "drafted_actions": drafted})
+    except Exception as e:
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
