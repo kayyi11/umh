@@ -2,9 +2,12 @@ from flask import Flask
 from flask_cors import CORS
 from routes.chat_routes import chat_bp
 from routes.insight_routes import insight_bp # 1. Import new blueprint
+from routes.decision_tracker_route import decision_tracker_bp
+app.register_blueprint(decision_tracker_bp)
 
 app = Flask(__name__)
 CORS(app)
+
 
 # Register blueprints
 app.register_blueprint(chat_bp, url_prefix='/api')
