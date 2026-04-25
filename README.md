@@ -9,7 +9,8 @@ AI-powered Business Intelligence Platform
 
 *Transforming raw business data into strategic decisions, real-time insights, and automated action plans.*
 
-[![Watch the Pitch](https://img.shields.io/badge/Watch-Pitch_Video-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+[![Watch the Pitch](https://img.shields.io/badge/Watch-Pitch_Video-red?style=for-the-badge&logo=youtube)](
+https://drive.google.com/file/d/1NUgavXSdGYXA5yRNht6IItrXKWBSxLKE/view?usp=sharing)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black)
