@@ -140,7 +140,7 @@ Pre-built action shortcuts for the most common business operations — reorder s
 | Service | Role |
 |---|---|
 | Firebase Firestore | Primary database (region: `asia-southeast1`) |
-| Firebase project: `majuai` | Hosting & backend config |
+| Firebase project: `zintelligence` | Hosting & backend config |
 
 ---
 
