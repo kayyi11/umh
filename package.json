@@ -1,0 +1,12 @@
+{
+  "name": "majuai-seed",
+  "version": "1.0.0",
+  "description": "Firestore seed script for MajuAI",
+  "main": "seed.js",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

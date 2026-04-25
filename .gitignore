@@ -25,3 +25,14 @@ dist-ssr
 
 .env
 .env.*
+majuai-firebase-adminsdk.json
+
+.venv/
+.venv*/
+venv/
+venv*/
+__pycache__/
+*.pyc
+.env
+node_modules/
+dist/

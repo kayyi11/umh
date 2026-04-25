@@ -1,0 +1,8 @@
+Flask
+flask-cors
+crewai[litellm]
+crewai-tools
+python-dotenv
+langchain-openai
+firebase-admin
+litellm
