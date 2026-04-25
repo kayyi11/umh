@@ -11,7 +11,7 @@ export default function QuickActions() {
     {
       id: 'supplier',
       title: 'Supplier Email',
-      description: 'Renegotiate chicken price with current supplier',
+      description: 'Quick start on contacting your supplier',
       iconThemeClass: 'bg-blue-500/10 text-blue-400',
       activeBorderClass: 'border-[#3B82F6]',
       activeBtnClass: 'bg-[#3B82F6]',
