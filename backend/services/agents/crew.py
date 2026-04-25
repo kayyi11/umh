@@ -92,6 +92,45 @@ def run_di_analysis(user_query):
     return str(result)
 
 
+def run_report_generation(user_prompt, report_type):
+    data_gathering_task = Task(
+        description=(
+            f"Gather all relevant numerical data, metrics, and inventory statuses "
+            f"required for a '{report_type}' report. Keep in mind the user's specific request: '{user_prompt}'."
+        ),
+        expected_output="A raw data summary containing all necessary metrics and inventory figures.",
+        agent=risk_sentinel,
+        tools=[get_business_metrics, inventory_monitor]
+    )
+
+    report_writing_task = Task(
+        description=(
+            f"Using the gathered data, write a structured and professional '{report_type}' report. "
+            f"Address the user's specific prompt: '{user_prompt}'.\n"
+            f"You MUST include the following sections:\n"
+            f"- Executive Summary\n"
+            f"- Key Metrics\n"
+            f"- Analysis\n"
+            f"- Recommendations\n\n"
+            f"Format the final output strictly in clean Markdown."
+        ),
+        expected_output="A professional, strictly Markdown-formatted report with Executive Summary, Key Metrics, Analysis, and Recommendations.",
+        agent=strategist
+    )
+
+    report_crew = Crew(
+        agents=[risk_sentinel, strategist],
+        tasks=[data_gathering_task, report_writing_task],
+        verbose=True
+    )
+
+    result = report_crew.kickoff()
+
+    if hasattr(result, 'raw'):
+        return result.raw
+    return str(result)
+
+
 def run_draft_actions():
     """3-agent pipeline (Risk Sentinel → Strategist → Executor) that produces
     drafted messages for the Quick Actions page."""
