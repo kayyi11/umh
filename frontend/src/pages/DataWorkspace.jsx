@@ -9,14 +9,14 @@ export default function DataWorkspace() {
         <h1 className="text-[32px] font-extrabold text-white">Data Workspace</h1>
       </header>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards — records count + confidence per data type */}
       <DataStats />
 
-      {/* Table Editor */}
+      {/* Unified Smart Table — merges Firestore data + uploaded data */}
       <div className="mb-6">
         <div className="flex justify-between items-end mb-4">
-           <h2 className="text-2xl font-bold text-white">Table Editor</h2>
-           <p className="text-slate-500 text-sm italic">Showing live data from Firestore</p>
+          <h2 className="text-2xl font-bold text-white">Table Editor</h2>
+          <p className="text-slate-500 text-sm italic">Showing live data from Firestore</p>
         </div>
         <EditableDataTable />
       </div>
