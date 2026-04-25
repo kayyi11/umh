@@ -10,6 +10,7 @@ export default function RevenueDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState("");
   const [isModalLoading, setIsModalLoading] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   // Fetch real data from Firebase via Backend
   useEffect(() => {
@@ -50,6 +51,34 @@ export default function RevenueDashboard() {
       setModalContent("Error: Could not reach the Strategist Agent.");
     } finally {
       setIsModalLoading(false);
+    }
+  };
+
+  const handleSimulate = async () => {
+    setIsSimulating(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/simulate-scenario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy: insightData.optimization.title }),
+      });
+      // Inside handleSimulate in RevenueDashboard.jsx
+      const data = await response.json();
+
+      setInsightData(prev => ({
+        ...prev,
+        simulationMetrics: data.newMetrics,
+        // Update the big green percentage to match the new simulation
+        optimization: {
+          ...prev.optimization,
+          profitGrowth: `+${data.newMetrics.find(m => m.label === "Net ROI").change}%`,
+          confidence: "High (Simulated)"
+        }
+      }));
+    } catch (err) {
+      console.error("Simulation failed:", err);
+    } finally {
+      setIsSimulating(false);
     }
   };
 
@@ -113,7 +142,13 @@ export default function RevenueDashboard() {
                 <p className="text-sm text-slate-400">Confidence: <span className="text-[#34D399] font-medium">{insightData.optimization.confidence}</span></p>
               </div>
               <div className="flex items-center space-x-4 mt-8">
-                <button className="flex-1 bg-[#7C3AED] hover:bg-[#8B5CF6] text-white py-2.5 rounded-lg text-sm font-semibold transition-all">Simulate Scenario</button>
+                <button 
+                  onClick={handleSimulate}
+                  disabled={isSimulating}
+                  className={`flex-1 bg-[#7C3AED] hover:bg-[#8B5CF6] text-white py-2.5 rounded-lg text-sm font-semibold transition-all ${isSimulating ? 'opacity-50 animate-pulse' : ''}`}
+                >
+                  {isSimulating ? "Simulating..." : "Simulate Scenario"}
+                </button>
                 <button className="flex-1 border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 py-2.5 rounded-lg text-sm font-semibold transition-all">Apply to Actions</button>
               </div>
             </div>

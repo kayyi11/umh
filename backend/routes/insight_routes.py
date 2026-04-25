@@ -25,3 +25,15 @@ def get_detailed_analysis():
         return jsonify({"status": "success", "report": report})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@insight_bp.route('/simulate-scenario', methods=['POST'])
+def simulate_scenario():
+    # Logic: Based on the strategy, we 'project' better numbers
+    return jsonify({
+        "status": "success",
+        "newMetrics": [
+            {"label": "Current Revenue", "current": 5000, "projected": 5800, "change": 16},
+            {"label": "Ad Spend", "current": 800, "projected": 650, "change": -18.7},
+            {"label": "Net ROI", "current": 4.2, "projected": 5.5, "change": 31}
+        ]
+    })

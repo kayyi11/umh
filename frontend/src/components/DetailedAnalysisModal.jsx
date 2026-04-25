@@ -1,3 +1,5 @@
+//frontend/src/components/DetailedAnalysisModal.jsx
+
 export default function DetailedAnalysisModal({ isOpen, onClose, content, isLoading }) {
   if (!isOpen) return null;
 
