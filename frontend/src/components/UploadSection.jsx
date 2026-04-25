@@ -1,92 +1,162 @@
-export default function UploadSection() {
+// frontend/src/components/UploadSection.jsx
+import { useRef, useState } from "react";
+
+export default function UploadSection({ onUploadStart, onUploadComplete }) {
+  const dropRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleFileChange = async (file, type) => {
+    if (!file || isUploading) return;
+
+    setUploadError(null);
+    setIsUploading(true);
+
+    const startTime = new Date();
+    onUploadStart(startTime);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", type);
+
+    // The AI call (Claude API) can take 5–15s.
+    // Strategy: fire the backend call and the 5s UI timer IN PARALLEL.
+    // We wait for BOTH to finish before calling onUploadComplete, so the
+    // summary always reflects the real backend result — never stale data.
+    const backendPromise = fetch("http://localhost:5000/api/upload", {
+      method: "POST",
+      body: formData,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      return res.json();
+    });
+
+    // Minimum display time so the timeline animation always plays fully (5s)
+    const minDisplayPromise = new Promise((resolve) => setTimeout(resolve, 5000));
+
+    try {
+      // Wait for BOTH: real data + minimum animation time
+      const [data] = await Promise.all([backendPromise, minDisplayPromise]);
+      onUploadComplete(data);
+    } catch (err) {
+      console.error("Upload Error:", err);
+      setUploadError("Extraction failed. Check backend connection or API key.");
+      // Still complete so the UI doesn't hang forever
+      await minDisplayPromise.catch(() => {});
+      onUploadComplete({
+        summary: { itemsDetected: 0, highConfidence: 0, lowConfidence: 0, overallAccuracy: 0 },
+        extractedItems: [],
+        error: err.message,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openFileBrowser = (accept, type) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.onchange = (e) => handleFileChange(e.target.files[0], type);
+    input.click();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    // Detect type from mime
+    let type = "drop";
+    if (file.type.startsWith("image/")) type = "receipt";
+    else if (file.type === "application/pdf") type = "pdf";
+    else if (file.type.startsWith("audio/")) type = "voice";
+    handleFileChange(file, type);
+  };
+
   return (
     <div className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-[#7F92BB]/40 flex flex-col h-full">
       <h2 className="text-xl font-bold text-white mb-6">Upload Data</h2>
 
+      {/* Error banner */}
+      {uploadError && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+          ⚠️ {uploadError}
+        </div>
+      )}
+
       <div className="flex flex-col space-y-4 flex-1">
-        {/* Option 1: Snap Receipt */}
-        <button className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 bg-transparent hover:bg-white/5 transition-colors group text-left">
-          <div className="mr-4 text-slate-400 group-hover:text-white transition-colors">
-            <svg
-              className="w-7 h-7"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              ></path>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              ></path>
-            </svg>
-          </div>
+
+        {/* Snap Receipt */}
+        <button
+          onClick={() => openFileBrowser("image/*", "receipt")}
+          disabled={isUploading}
+          className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 hover:bg-white/5 transition-all text-left group disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <div className="mr-4 text-2xl">📸</div>
           <div>
             <h3 className="font-bold text-white text-base">Snap Receipt</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Use camera to take photo
-            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Accepts PNG, JPG, JPEG</p>
           </div>
         </button>
 
-        {/* Option 2: Upload PDF */}
-        <button className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 bg-transparent hover:bg-white/5 transition-colors group text-left">
-          <div className="mr-4 text-slate-400 group-hover:text-white transition-colors">
-            <svg
-              className="w-7 h-7"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-              ></path>
-            </svg>
-          </div>
+        {/* Upload PDF */}
+        <button
+          onClick={() => openFileBrowser(".pdf,application/pdf", "pdf")}
+          disabled={isUploading}
+          className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 hover:bg-white/5 transition-all text-left group disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <div className="mr-4 text-2xl">📄</div>
           <div>
             <h3 className="font-bold text-white text-base">Upload PDF</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Upload invoice or document
-            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Extract data from PDF invoices</p>
           </div>
         </button>
 
-        {/* Option 3: Voice Note */}
-        <button className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 bg-transparent hover:bg-white/5 transition-colors group text-left">
-          <div className="mr-4 text-slate-400 group-hover:text-white transition-colors">
-            <svg
-              className="w-7 h-7"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-              ></path>
-            </svg>
-          </div>
+        {/* Voice Note */}
+        <button
+          onClick={() => openFileBrowser("audio/*,.m4a,.mp3,.wav", "voice")}
+          disabled={isUploading}
+          className="flex items-center p-4 rounded-xl border border-[#7F92BB]/30 hover:bg-white/5 transition-all text-left group disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <div className="mr-4 text-2xl">🎤</div>
           <div>
             <h3 className="font-bold text-white text-base">Voice Note</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Speak your data</p>
+            <p className="text-xs text-slate-400 mt-0.5">Upload voice recordings (m4a/mp3)</p>
           </div>
         </button>
 
-        {/* Option 4: Drag & Drop Area */}
-        <div className="mt-4 flex-1 border-2 border-dashed border-[#7F92BB]/30 rounded-xl flex items-center justify-center p-6 hover:border-[#3B82F6]/50 hover:bg-[#3B82F6]/5 transition-all cursor-pointer min-h-[140px]">
-          <span className="font-bold text-white">Drag and drop files here</span>
+        {/* Drag & Drop Zone */}
+        <div
+          ref={dropRef}
+          onDragOver={(e) => {
+            if (isUploading) return;
+            e.preventDefault();
+            dropRef.current.classList.add("border-[#3B82F6]/70", "bg-white/5");
+          }}
+          onDragLeave={() => {
+            dropRef.current.classList.remove("border-[#3B82F6]/70", "bg-white/5");
+          }}
+          onDrop={(e) => {
+            dropRef.current.classList.remove("border-[#3B82F6]/70", "bg-white/5");
+            if (!isUploading) handleDrop(e);
+          }}
+          onClick={() => { if (!isUploading) openFileBrowser("*/*", "drop"); }}
+          className={`mt-4 flex-1 border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center transition-all ${
+            isUploading
+              ? "border-[#7F92BB]/20 cursor-not-allowed opacity-50"
+              : "border-[#7F92BB]/30 hover:border-[#3B82F6]/50 cursor-pointer"
+          }`}
+        >
+          {isUploading ? (
+            <>
+              <div className="w-6 h-6 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin mb-2" />
+              <span className="text-slate-400 text-sm">AI extracting data...</span>
+            </>
+          ) : (
+            <span className="font-bold text-white">Drag and drop ANY file here</span>
+          )}
         </div>
+
       </div>
     </div>
   );

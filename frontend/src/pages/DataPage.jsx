@@ -1,46 +1,49 @@
+// frontend/src/pages/DataPage.jsx
+import { useState } from "react";
 import UploadSection from "../components/UploadSection";
 import ProcessingTimeline from "../components/ProcessingTimeline";
 import ExtractionSummary from "../components/ExtractionSummary";
 
 export default function DataPage() {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [startTime, setStartTime] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
+  const [extractedItems, setExtractedItems] = useState(null); // NEW: store extracted items for workspace merge
+
+  const handleStart = (time) => {
+    setStartTime(time);
+    setIsProcessing(true);
+    setSummaryData(null);
+    setExtractedItems(null);
+  };
+
+  const handleComplete = (backendResponse) => {
+    setIsProcessing(false);
+    // backendResponse contains { summary, extractedItems }
+    setSummaryData(backendResponse.summary);
+    if (backendResponse.extractedItems) {
+      // Store in sessionStorage so DataWorkspace can merge them
+      const existing = JSON.parse(sessionStorage.getItem("uploadedItems") || "[]");
+      const merged = [...existing, ...backendResponse.extractedItems];
+      sessionStorage.setItem("uploadedItems", JSON.stringify(merged));
+      setExtractedItems(backendResponse.extractedItems);
+    }
+  };
+
   return (
-    <>
-      {/* Header */}
+    <div className="animate-in fade-in duration-500">
       <header className="flex justify-between items-center mb-10">
-        <h1 className="text-[32px] font-extrabold text-white">Data</h1>
-        <div className="flex items-center space-x-6">
-          {/* Live Sync Indicator */}
-          <div className="flex items-center space-x-2 text-sm text-[#34D399]">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#34D399]"></span>
-            </span>
-            <span>Live Sync</span>
-          </div>
-          <div className="text-sm text-slate-400">Last updated: 10s ago</div>
-          {/* User Profile Bubble */}
-          <div className="flex items-center space-x-3 bg-[#1F2937] px-3 py-1.5 rounded-full border border-[#7F92BB]/30">
-            <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-              U
-            </div>
-            <span className="font-medium text-white text-sm pr-2">User</span>
-          </div>
-        </div>
+        <h1 className="text-[32px] font-extrabold text-white">Data Extract</h1>
       </header>
-
-      {/* Data Extract Layout Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pb-3">
-        {/* Left Column: Upload Options */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         <div className="xl:col-span-4">
-          <UploadSection />
+          <UploadSection onUploadStart={handleStart} onUploadComplete={handleComplete} />
         </div>
-
-        {/* Right Column: AI Log Timeline & Summary */}
-        <div className="xl:col-span-8 flex flex-col h-full">
-          <ProcessingTimeline />
-          <ExtractionSummary />
+        <div className="xl:col-span-8 flex flex-col space-y-6">
+          <ProcessingTimeline isProcessing={isProcessing} startTime={startTime} />
+          <ExtractionSummary data={summaryData} extractedItems={extractedItems} />
         </div>
       </div>
-    </>
+    </div>
   );
 }
