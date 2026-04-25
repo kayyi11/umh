@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ActionCard from '../components/ActionCard';
 import StatusTracker from '../components/StatusTracker';
+import ProcessingLog from '../components/ProcessingLog';
 
 export default function QuickActions() {
   // ==========================================
@@ -52,8 +53,8 @@ export default function QuickActions() {
   const [isExecuting, setIsExecuting] = useState(false);
 
   // Live drafted actions from the Executor agent
-  const [draftedActions, setDraftedActions] = useState([]);
-  const [isDraftsLoading, setIsDraftsLoading] = useState(true);
+  const [draftedActions, setDraftedActions] = useState(null);
+  const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const [draftsError, setDraftsError] = useState(null);
 
   // ========== NEW: Edit-related state ==========
@@ -62,32 +63,28 @@ export default function QuickActions() {
   const [editBuffer, setEditBuffer] = useState('');        // temporary value while editing
 
   // ==========================================
-  // FETCH DRAFTED ACTIONS ON MOUNT (unchanged)
+  // FETCH DRAFTED ACTIONS (user-triggered)
   // ==========================================
 
-  useEffect(() => {
-    const fetchDraftedActions = async () => {
-      setIsDraftsLoading(true);
-      setDraftsError(null);
-      try {
-        const response = await fetch('http://localhost:5000/api/draft-actions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
-        const data = await response.json();
-        setDraftedActions(data.drafted_actions || []);
-      } catch (err) {
-        console.error('Failed to fetch drafted actions:', err);
-        setDraftsError('Failed to load AI drafts. Please refresh the page.');
-      } finally {
-        setIsDraftsLoading(false);
-      }
-    };
-
-    fetchDraftedActions();
-  }, []);
+  const fetchDraftedActions = async () => {
+    setIsDraftsLoading(true);
+    setDraftsError(null);
+    try {
+      const response = await fetch('http://localhost:5000/api/draft-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      const data = await response.json();
+      setDraftedActions(data.drafted_actions || []);
+    } catch (err) {
+      console.error('Failed to fetch drafted actions:', err);
+      setDraftsError('Failed to load AI drafts. Please try again.');
+    } finally {
+      setIsDraftsLoading(false);
+    }
+  };
 
   // ==========================================
   // HELPERS (unchanged except for edit support)
@@ -106,6 +103,7 @@ export default function QuickActions() {
   const getActiveDraftContent = () => {
     if (isDraftsLoading) return 'Loading AI-generated draft...';
     if (draftsError) return draftsError;
+    if (draftedActions === null) return '';
     return editedDrafts[activeDraft] ?? getOriginalContent(activeDraft);
   };
 
@@ -196,22 +194,44 @@ export default function QuickActions() {
         {/* Top Left: Generated Actions List */}
         <div className="lg:col-span-4 bg-[#121826] rounded-xl border border-[#7F92BB]/30 p-5 flex flex-col shadow-lg">
           <h2 className="text-white font-bold text-lg mb-4">Generated Actions</h2>
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
-            {actionCardsData.map(card => (
-              <ActionCard 
-                key={card.id}
-                id={card.id}
-                title={card.title}
-                description={card.description}
-                iconSvg={card.iconSvg}
-                iconThemeClass={card.iconThemeClass}
-                activeBorderClass={card.activeBorderClass}
-                activeBtnClass={card.activeBtnClass}
-                isActive={activeDraft === card.id}
-                onClick={handleTabSwitch}   // changed to our wrapper
-              />
-            ))}
-          </div>
+          {draftedActions === null && !isDraftsLoading ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+              {draftsError && <p className="text-red-400 text-sm">{draftsError}</p>}
+              <button
+                onClick={fetchDraftedActions}
+                className="flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 shadow-md"
+              >
+                ⚡ Generate Recommended Actions
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                {actionCardsData.map(card => (
+                  <ActionCard
+                    key={card.id}
+                    id={card.id}
+                    title={card.title}
+                    description={card.description}
+                    iconSvg={card.iconSvg}
+                    iconThemeClass={card.iconThemeClass}
+                    activeBorderClass={card.activeBorderClass}
+                    activeBtnClass={card.activeBtnClass}
+                    isActive={activeDraft === card.id}
+                    onClick={handleTabSwitch}
+                  />
+                ))}
+              </div>
+              {!isDraftsLoading && (
+                <button
+                  onClick={fetchDraftedActions}
+                  className="mt-3 w-full border border-[#7F92BB]/40 hover:border-[#7F92BB] hover:bg-white/5 text-slate-300 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95"
+                >
+                  Regenerate
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         {/* Top Middle: Smart Draft Preview Area (with edit functionality) */}
@@ -232,21 +252,13 @@ export default function QuickActions() {
               : 'border-[#7F92BB]/20'
           }`}>
             <div className="absolute top-3 right-3 text-[10px] uppercase font-bold tracking-widest text-[#7F92BB]">
-              {isDraftsLoading ? 'Loading...' : isEditing ? 'Editing' : 'AI Draft'}
+              {isDraftsLoading ? 'Processing...' : isEditing ? 'Editing' : draftedActions === null ? '' : 'AI Draft'}
             </div>
 
-            {/* Loading skeleton (unchanged) */}
             {isDraftsLoading ? (
-              <div className="w-full h-full flex flex-col space-y-3 pt-2 animate-pulse">
-                <div className="h-3 bg-slate-700 rounded w-3/4"></div>
-                <div className="h-3 bg-slate-700 rounded w-full"></div>
-                <div className="h-3 bg-slate-700 rounded w-5/6"></div>
-                <div className="h-3 bg-slate-700 rounded w-2/3"></div>
-                <div className="h-3 bg-slate-700 rounded w-full"></div>
-                <div className="h-3 bg-slate-700 rounded w-4/5"></div>
-              </div>
+              <ProcessingLog />
             ) : (
-              <textarea 
+              <textarea
                 className={`w-full h-full bg-transparent text-sm leading-relaxed resize-none focus:outline-none ${
                   draftsError ? 'text-red-400' : 'text-slate-200'
                 }`}
@@ -279,14 +291,14 @@ export default function QuickActions() {
               <>
                 <button
                   onClick={handleEdit}
-                  disabled={isDraftsLoading || !!draftsError}
+                  disabled={isDraftsLoading || draftedActions === null || !!draftsError}
                   className="flex-1 bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-95 shadow-md"
                 >
                   Edit Draft
                 </button>
                 <button
                   onClick={handleReset}
-                  disabled={isDraftsLoading || !hasUserEdit}
+                  disabled={isDraftsLoading || draftedActions === null || !hasUserEdit}
                   className="flex-1 bg-transparent border border-[#7F92BB]/40 hover:border-[#7F92BB] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-95"
                 >
                   Reset
@@ -311,9 +323,9 @@ export default function QuickActions() {
           <div className="mt-6 flex justify-center">
             <button 
               onClick={handleExecute}
-              disabled={isExecuting || isDraftsLoading}
+              disabled={isExecuting || draftedActions === null}
               className={`w-3/4 flex items-center justify-center space-x-3 text-white py-3.5 rounded-xl font-bold text-base transition-all shadow-[0_4px_15px_-3px_rgba(217,119,6,0.4)] active:scale-95 ${
-                isExecuting || isDraftsLoading
+                isExecuting || draftedActions === null
                   ? 'bg-[#B45309] cursor-wait opacity-70'
                   : 'bg-[#D97706] hover:bg-[#B45309]'
               }`}

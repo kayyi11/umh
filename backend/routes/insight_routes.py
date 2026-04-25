@@ -18,13 +18,14 @@ def get_detailed_analysis():
     try:
         data = request.json
         recommendation = data.get('recommendation', 'General Optimization')
-        
-        # Trigger the Strategist Agent
-        report = generate_detailed_report(recommendation)
-        
-        return jsonify({"status": "success", "report": report})
+
+        result = generate_detailed_report(recommendation)
+
+        if result["status"] == "success":
+            return jsonify({"status": "success", "report": result["content"]})
+        return jsonify({"status": result["status"], "error": result["error"]}), 503
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "error": str(e)}), 500
     
 @insight_bp.route('/simulate-scenario', methods=['POST'])
 def simulate_scenario():

@@ -10,7 +10,8 @@ export default function RevenueDashboard() {
   const [insightData, setInsightData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState("");
+  const [modalContent, setModalContent] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
 
@@ -41,6 +42,8 @@ export default function RevenueDashboard() {
   const handleViewDetailedAnalysis = async () => {
     setIsModalOpen(true);
     setIsModalLoading(true);
+    setModalContent(null);
+    setModalError(null);
     try {
       const response = await fetch("http://localhost:5000/api/detailed-analysis", {
         method: "POST",
@@ -48,9 +51,13 @@ export default function RevenueDashboard() {
         body: JSON.stringify({ recommendation: insightData?.optimization?.title }),
       });
       const data = await response.json();
-      setModalContent(data.report);
-    } catch { // ✅ FIXED: Removed unused (error) variable to satisfy ESLint
-      setModalContent("Error: Could not reach the Strategist Agent.");
+      if (!response.ok || data.status !== "success") {
+        setModalError(data.error || "AI service temporarily unavailable.");
+      } else {
+        setModalContent(data.report);
+      }
+    } catch {
+      setModalError("Could not reach the AI service. Check your connection.");
     } finally {
       setIsModalLoading(false);
     }
@@ -189,11 +196,13 @@ export default function RevenueDashboard() {
           </div>
         )}
 
-        <DetailedAnalysisModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
+        <DetailedAnalysisModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
           content={modalContent}
           isLoading={isModalLoading}
+          error={modalError}
+          onRetry={handleViewDetailedAnalysis}
         />
       </div>
     </div>

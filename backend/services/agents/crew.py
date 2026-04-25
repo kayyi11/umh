@@ -1,8 +1,10 @@
+import os
 from crewai import Agent, Task, Crew, Process
 from services.glm_service import get_glm_model
 from services.agents.tools import get_business_metrics, inventory_monitor, supplier_contact_lookup
 
 llm = get_glm_model()
+VERBOSE = os.getenv("CREWAI_VERBOSE", "false") == "true"
 
 # 1. Risk Sentinel: The Monitor (Architecture PDF Item 2.2)
 risk_sentinel = Agent(
@@ -11,7 +13,9 @@ risk_sentinel = Agent(
     backstory='You monitor the Alert Feed (P1/P2). You focus on operational survival.',
     tools=[inventory_monitor],
     llm=llm,
-    verbose=True # This lets you see the agent thinking in the terminal
+    max_iter=15,
+    max_execution_time=120,
+    verbose=VERBOSE,
 )
 
 # 2. Strategist: The Brain (Architecture PDF Item 2.1)
@@ -22,7 +26,9 @@ strategist = Agent(
     system_template="Always use RM (Ringgit Malaysia) for currency and focus on the Malaysian e-commerce context.",
     tools=[get_business_metrics],
     llm=llm,
-    verbose=True
+    max_iter=15,
+    max_execution_time=120,
+    verbose=VERBOSE,
 )
 
 # 3. Executor: The Doer (Architecture PDF Item 2.3)
@@ -32,25 +38,46 @@ executor = Agent(
     backstory='You handle the "Doing". You prepare drafts for the Quick Actions page.',
     tools=[supplier_contact_lookup],
     llm=llm,
-    verbose=True
+    max_iter=15,
+    max_execution_time=120,
+    verbose=VERBOSE,
 )
 
-def run_di_analysis(user_query):
+def run_di_analysis(user_query, event_queue=None):
+    def emit(event_type, content):
+        print(f"\n[AGENT:{event_type.upper()}] {content}")
+        if event_queue is not None:
+            try:
+                event_queue.put_nowait({'type': event_type, 'content': content})
+            except Exception:
+                pass
+
+    emit('detect', 'Risk Sentinel is scanning inventory and identifying risk flags...')
+
+    def after_task1(output):
+        emit('think', 'Business Strategist is analyzing trends and forming a recommendation...')
+
+    def after_task2(output):
+        emit('act', 'Operations Executor is drafting the final structured response...')
+
     # Task 1: Identify Risks (The "What is happening")
     task1 = Task(
         description=f"Analyze inventory and margins for: {user_query}. Use tools to find P1/P2 breaches.",
         agent=risk_sentinel,
-        expected_output="A list of specific data red flags (e.g., low stock, high returns)."
+        expected_output="A list of specific data red flags (e.g., low stock, high returns).",
+        max_execution_time=120,
+        callback=after_task1,
     )
-    
+
     # Task 2: Strategic Recommendation (The "Why is it happening")
     task2 = Task(
         description=f"Directly answer the user's question: '{user_query}'. Explain the 'Why' using business metrics (Net Profit, Return Rate). Then suggest a 'Decision of the Day'.",
         agent=strategist,
         context=[task1],
-        expected_output="A deep-dive explanation of the cause of the issue and a strategic recommendation."
+        expected_output="A deep-dive explanation of the cause of the issue and a strategic recommendation.",
+        callback=after_task2,
     )
-    
+
     # Task 3: Structured, readable reply with emojis and bullet points
     task3 = Task(
         description="""
@@ -79,17 +106,31 @@ def run_di_analysis(user_query):
         """,
         agent=executor,
         context=[task2],
-        expected_output="A structured plain-text response with emojis, • bullet points, and no markdown, ending with 'Do you need further clarification?'"
+        expected_output="A structured plain-text response with emojis, • bullet points, and no markdown, ending with 'Do you need further clarification?'",
     )
 
     crew = Crew(
         agents=[risk_sentinel, strategist, executor],
         tasks=[task1, task2, task3],
-        process=Process.sequential
+        process=Process.sequential,
+        verbose=True,
     )
 
     result = crew.kickoff()
-    return str(result)
+
+    output_text = result.raw if hasattr(result, 'raw') else str(result)
+    thoughts_text = ""
+    if hasattr(result, 'tasks_output') and hasattr(result.tasks_output, '__len__'):
+        parts = []
+        for i, t in enumerate(result.tasks_output[:-1]):
+            parts.append(f"Agent Task {i+1} Output:\n{getattr(t, 'raw', str(t)).strip()}")
+        thoughts_text = "\n\n".join(parts)
+
+    emit('done_log', f"Analysis complete. Output length: {len(output_text)} chars")
+    if event_queue is not None:
+        event_queue.put({'type': 'done', 'output': output_text, 'thoughts': thoughts_text})
+
+    return result
 
 
 def run_report_generation(user_prompt, report_type):
@@ -121,7 +162,7 @@ def run_report_generation(user_prompt, report_type):
     report_crew = Crew(
         agents=[risk_sentinel, strategist],
         tasks=[data_gathering_task, report_writing_task],
-        verbose=True
+        verbose=VERBOSE,
     )
 
     result = report_crew.kickoff()
